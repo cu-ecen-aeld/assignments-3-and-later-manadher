@@ -23,8 +23,8 @@ int main(int argc, char **argv)
     if (n_char < 0)
     {
         syslog(LOG_ERR, "Could not write: %s", argv[2]);
-        fclose(f);
-        closelog();
+         fclose(f);
+         closelog();
         return 1;
     }
     else
