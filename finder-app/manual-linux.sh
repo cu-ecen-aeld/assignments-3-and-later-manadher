@@ -85,14 +85,10 @@ ${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library"
 
 # TODO: Add library dependencies to rootfs
 gcc_sysroot=`aarch64-none-linux-gnu-gcc -print-sysroot`
-echo "cpoying ${gcc_sysroot}/lib64/libm.so.6 to lib64"
 cp ${gcc_sysroot}/lib64/libm.so.6 lib64
-echo "cpoying ${gcc_sysroot}/lib64/libc.so.6 to lib64"
 cp ${gcc_sysroot}/lib64/libc.so.6 lib64
-cecho "cpoying ${gcc_sysroot}/lib64/libresolv.so.2 to lib64"
-p ${gcc_sysroot}/lib64/libresolv.so.2 lib64
+cp ${gcc_sysroot}/lib64/libresolv.so.2 lib64
 
-echo "cpoying ${gcc_sysroot}/lib/ld-linux-aarch64.so.1 to lib"
 cp ${gcc_sysroot}/lib/ld-linux-aarch64.so.1 lib
 
 # TODO: Make device nodes
