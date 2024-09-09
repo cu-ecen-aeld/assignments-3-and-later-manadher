@@ -35,6 +35,12 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     git checkout ${KERNEL_VERSION}
 
     # TODO: Add your kernel build steps here
+    make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} mrproper
+    make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} defconfig
+    make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} all
+    make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} modules
+    make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} dtbs
+    cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/
 fi
 
 echo "Adding the Image in outdir"
@@ -48,6 +54,11 @@ then
 fi
 
 # TODO: Create necessary base directories
+mkdir -p "${OUTDIR}/rootfs"
+cd "${OUTDIR}/rootfs"
+mkdir -p bin dev etc home lib lib64 proc sbin sys tmp usr var
+mkdir -p usr/bin usr/lib usr/sbin
+mkdir -p var/log
 
 cd "$OUTDIR"
 if [ ! -d "${OUTDIR}/busybox" ]
@@ -56,25 +67,50 @@ git clone git://busybox.net/busybox.git
     cd busybox
     git checkout ${BUSYBOX_VERSION}
     # TODO:  Configure busybox
+    make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} mrproper
+    make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} defconfig
 else
     cd busybox
 fi
 
 # TODO: Make and install busybox
+make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} all
+make CONFIG_PREFIX="${OUTDIR}/rootfs" ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} install
+cd ${OUTDIR}/rootfs
+chmod +s bin/busybox
 
 echo "Library dependencies"
 ${CROSS_COMPILE}readelf -a bin/busybox | grep "program interpreter"
 ${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library"
 
 # TODO: Add library dependencies to rootfs
+gcc_sysroot=`aarch64-none-linux-gnu-gcc -print-sysroot`
+echo "cpoying ${gcc_sysroot}/lib64/libm.so.6 to lib64"
+cp ${gcc_sysroot}/lib64/libm.so.6 lib64
+echo "cpoying ${gcc_sysroot}/lib64/libc.so.6 to lib64"
+cp ${gcc_sysroot}/lib64/libc.so.6 lib64
+cecho "cpoying ${gcc_sysroot}/lib64/libresolv.so.2 to lib64"
+p ${gcc_sysroot}/lib64/libresolv.so.2 lib64
+
+echo "cpoying ${gcc_sysroot}/lib/ld-linux-aarch64.so.1 to lib"
+cp ${gcc_sysroot}/lib/ld-linux-aarch64.so.1 lib
 
 # TODO: Make device nodes
+sudo mknod -m 666 dev/null c 1 3
+sudo mknod -m 600 dev/console c 5 1
 
 # TODO: Clean and build the writer utility
-
+cd ${FINDER_APP_DIR}
+make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} clean
+make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} all
 # TODO: Copy the finder related scripts and executables to the /home directory
 # on the target rootfs
-
+cp *.sh ${OUTDIR}/rootfs/home
+cp writer writer.o ${OUTDIR}/rootfs/home
 # TODO: Chown the root directory
-
+cd ${OUTDIR}/rootfs
+sudo chown -v -R root:root ./
 # TODO: Create initramfs.cpio.gz
+find . | cpio -H newc -ov --owner root:root > ${OUTDIR}/initramfs.cpio
+cd ${OUTDIR}
+gzip -f initramfs.cpio
