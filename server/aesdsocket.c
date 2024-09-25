@@ -209,7 +209,7 @@ int main(int argc, char *argv[])
         {
             perror("setsockopt");
             exit(1);
-        } 
+        }
 
         if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1)
         {
@@ -251,8 +251,10 @@ int main(int argc, char *argv[])
         new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
         if (new_fd == -1)
         {
+            if (errno == EINTR)
+                continue;
             perror("accept");
-            continue;
+            exit(EXIT_FAILURE);
         }
 
         inet_ntop(their_addr.ss_family,
@@ -278,6 +280,10 @@ int main(int argc, char *argv[])
             new_fd = 0;
             syslog(LOG_DEBUG, "Closed connection from %s", s);
             exit(0);
+        }
+        else
+        {
+            close(new_fd);
         }
     }
 
